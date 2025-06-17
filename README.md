@@ -9,3 +9,5 @@
 3. 95thresholds.py：以95百分為當閾值，判斷熱浪事件
 
 4. mean_above_5deg_infivedays.py：定義網格點第d日起連續五天日均溫異常值超過5度，最後去計算總數判斷每個網格點發生熱浪的次數，後續可當作關聯規則的起始點
+
+5. mean_above_5deg_infivedays_decade.py：與4.相同，只是計算方式從60年調整成每十年計算一次
