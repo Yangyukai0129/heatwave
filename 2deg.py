@@ -7,7 +7,7 @@ t = t.sel(pressure_level=1000)
 temp = t['t']
 temp = temp.assign_coords(valid_time=pd.to_datetime(temp.valid_time.values))
 
-# 2. 粗化到 5°（用 mean）
+# 2. 粗化到 5°(用 mean)
 temp_coarse = temp.coarsen(latitude=8, longitude=8, boundary='trim').mean()
 
 
