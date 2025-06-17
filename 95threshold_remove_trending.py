@@ -6,21 +6,25 @@ import numpy as np
 # 1. 定義去除線性趨勢的函式（使用線性斜率法）
 def detrend_dim(da, dim='time'):
     """
-    對 DataArray 中指定維度執行線性趨勢移除。
-    每條時間序列會被擬合成 y = slope * x + intercept 並扣除這個趨勢。
+    去除 DataArray 中沿指定維度的線性趨勢，忽略 NaN。
     """
     def detrend_1d(y):
         x = np.arange(len(y))
-        slope, intercept, _, _, _ = stats.linregress(x, y)
-        return y - (slope * x + intercept)  # 扣掉趨勢線
-    
+        mask = ~np.isnan(y)
+        if mask.sum() < 2:  # 少於兩個有效點無法擬合
+            return y
+        # 線性擬合（忽略 NaN）
+        slope, intercept = np.polyfit(x[mask], y[mask], deg=1)
+        trend = slope * x + intercept
+        return y - trend
+
     return xr.apply_ufunc(
         detrend_1d, da,
-        input_core_dims=[[dim]],           # 指定作用在 dim 維度
-        output_core_dims=[[dim]],          # 輸出也是這個維度
-        vectorize=True,                    # 可套用到多個維度（每個格點各自運算）
-        dask='parallelized',               # 支援 dask 并行計算
-        output_dtypes=[da.dtype],          # 指定輸出資料型態
+        input_core_dims=[[dim]],
+        output_core_dims=[[dim]],
+        vectorize=True,
+        dask='parallelized',
+        output_dtypes=[da.dtype],
     )
 
 # 2. 載入 5 度解析度的 NetCDF 資料（氣溫變數為 't'）
@@ -33,11 +37,8 @@ ds = ds.sel(valid_time=ds['valid_time'].dt.month.isin([6, 7, 8]))
 ds_daily = ds.resample(valid_time='1D').max()
 ds_daily = ds_daily.chunk({'valid_time': -1})  # 調整 chunk，讓 valid_time 為一個整體處理
 
-# 4. 線性插值補齊缺值（避免後續趨勢移除或 quantile 出現 NaN）
-t_filled = ds_daily['t'].interpolate_na(dim='valid_time', method='linear')
-
 # 5. 對補值後的資料進行趨勢移除，取得無趨勢的氣溫資料
-t_detrended = detrend_dim(t_filled, dim='valid_time')
+t_detrended = detrend_dim(ds_daily['t'], dim='valid_time')
 
 # 6. 將去趨勢後的資料指定回一個新的 DataArray
 ds_detrended = ds_daily.copy()
@@ -62,7 +63,7 @@ lon = float(max_event_loc.longitude.values[0])
 print(f"熱浪事件最多的格點：lat={lat}, lon={lon}")
 
 # 假設 lat, lon 是你前面已經找好的熱浪最多的格點
-sel_raw      = t_filled.sel(latitude=lat, longitude=lon)
+sel_raw      = ds_daily['t'].sel(latitude=lat, longitude=lon)
 sel_detrend  = t_detrended.sel(latitude=lat, longitude=lon)
 
 # 將兩個時間序列轉為 DataFrame 比較
