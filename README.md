@@ -8,8 +8,12 @@
 
 3. 95thresholds.py：以95百分為當閾值，判斷熱浪事件
 
-4. mean_above_5deg_infivedays.py：定義網格點第d日起連續五天日均溫異常值超過5度，最後去計算總數判斷每個網格點發生熱浪的次數，後續可當作關聯規則的起始點
+4. 95threshold_remove_trending.py：與第三點不同的是考慮到趨勢性，使用線性斜率法以參考點去調整以前的溫度(並且找一點去確認其趨勢性變化，避免做錯XD)
 
-5. mean_above_5deg_infivedays_decade.py：與4.相同，只是計算方式從60年調整成每十年計算一次
+5. detrend_plot.py：視覺化查看調整的溫度變化
 
-6. ESv3.0.py：使用動態事件窗口的方式去找尋區域事件同步性
+6. mean_above_5deg_infivedays.py：定義網格點第d日起連續五天日均溫異常值超過5度，最後去計算總數判斷每個網格點發生熱浪的次數，後續可當作關聯規則的起始點
+
+7. mean_above_5deg_infivedays_decade.py：與第六點相同，只是計算方式從60年調整成每十年計算一次
+
+8. ESv3.0.py：使用動態事件窗口的方式去找尋區域事件同步性
