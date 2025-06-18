@@ -4,23 +4,31 @@ from scipy import stats
 import numpy as np
 
 # 1. 定義去除線性趨勢的函式（使用線性斜率法）
-def detrend_dim(da, dim='time'):
+def detrend_to_reference_year(da, dim='time', ref_year=2024):
     """
-    去除 DataArray 中沿指定維度的線性趨勢，忽略 NaN。
+    將 DataArray 沿指定時間維度做線性趨勢校正，使其與 ref_year 年氣候基準一致。
+    使用 datetime64 時間作為 x 軸，忽略 NaN。
     """
-    def detrend_1d(y):
-        x = np.arange(len(y))
+
+    def align_to_ref_year(y, t):
         mask = ~np.isnan(y)
-        if mask.sum() < 2:  # 少於兩個有效點無法擬合
+        if mask.sum() < 2:
             return y
-        # 線性擬合（忽略 NaN）
+
+        # 時間轉為年份與整數表示（以「日」為單位）
+        years = pd.to_datetime(t).year
+        x = years.astype('float')  # 可改成更細緻的 x，例如 `t.astype('datetime64[D]').astype('int64')`
+
+        # 擬合年均變化趨勢
         slope, intercept = np.polyfit(x[mask], y[mask], deg=1)
-        trend = slope * x + intercept
-        return y - trend
+
+        # 將所有資料對齊至 ref_year 年的氣候條件
+        adjustment = slope * (x - ref_year)
+        return y - adjustment
 
     return xr.apply_ufunc(
-        detrend_1d, da,
-        input_core_dims=[[dim]],
+        align_to_ref_year, da, da[dim],
+        input_core_dims=[[dim], [dim]],
         output_core_dims=[[dim]],
         vectorize=True,
         dask='parallelized',
@@ -38,11 +46,11 @@ ds_daily = ds.resample(valid_time='1D').max()
 ds_daily = ds_daily.chunk({'valid_time': -1})  # 調整 chunk，讓 valid_time 為一個整體處理
 
 # 5. 對補值後的資料進行趨勢移除，取得無趨勢的氣溫資料
-t_detrended = detrend_dim(ds_daily['t'], dim='valid_time')
+t_aligned = detrend_to_reference_year(ds_daily['t'], dim='valid_time', ref_year=2024)
 
 # 6. 將去趨勢後的資料指定回一個新的 DataArray
 ds_detrended = ds_daily.copy()
-ds_detrended['t'] = t_detrended
+ds_detrended['t'] = t_aligned
 
 # 7. 計算去趨勢後的 95 百分位數閾值（每個格點自己的極端高溫門檻）
 thresholds = ds_detrended['t'].quantile(0.95, dim='valid_time')
@@ -64,7 +72,7 @@ print(f"熱浪事件最多的格點：lat={lat}, lon={lon}")
 
 # 假設 lat, lon 是你前面已經找好的熱浪最多的格點
 sel_raw      = ds_daily['t'].sel(latitude=lat, longitude=lon)
-sel_detrend  = t_detrended.sel(latitude=lat, longitude=lon)
+sel_detrend  = t_aligned.sel(latitude=lat, longitude=lon)
 
 # 將兩個時間序列轉為 DataFrame 比較
 df_compare = pd.DataFrame({
