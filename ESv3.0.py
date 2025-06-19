@@ -5,11 +5,12 @@ import pickle
 import pandas as pd
 
 # 1. 讀取數據
-heatwave_events = xr.open_dataset('./data/5deg/heatwave_events_5deg_climatology(1965-2024).nc')['t']
+heatwave_events = xr.open_dataset('./data/5deg/heatwave_events_5deg_remove_trending(1965-2024).nc')['t']
 tau_max = 10
-n_grid = heatwave_events.shape[1] * heatwave_events.shape[2]
 n_time = heatwave_events.shape[0]
 events_flat = heatwave_events.stack(grid=['latitude', 'longitude']).transpose('valid_time', 'grid')
+#n_grid = heatwave_events.shape[1] * heatwave_events.shape[2]
+n_grid = events_flat.sizes['grid']
 
 # 2. 提取日期和經緯度
 dates = heatwave_events['valid_time'].values
@@ -84,8 +85,14 @@ def compute_es_and_transactions(events_i, events_j, tau_max, i, j, sync_events):
     return min(Q, 1.0), es_ij
 
 # 4. 主程式
-sync_matrix = np.zeros((n_grid, n_grid))
-es_matrix = np.zeros((n_grid, n_grid), dtype=int)
+#sync_matrix = np.zeros((n_grid, n_grid))
+from scipy.sparse import lil_matrix
+
+sync_matrix = lil_matrix((n_grid, n_grid), dtype=np.float32)
+#es_matrix = np.zeros((n_grid, n_grid), dtype=int)
+from scipy.sparse import lil_matrix
+
+es_matrix = lil_matrix((n_grid, n_grid), dtype=np.int8)  # or float32 if needed
 sync_events = {}
 
 for i in range(n_grid):
@@ -103,7 +110,8 @@ for i in range(n_grid):
 transactions_with_coords = []
 for time_idx in sorted(sync_events.keys()):
     if sync_events[time_idx]:
-        date = dates[time_idx]
+        #date = dates[time_idx]
+        date = pd.to_datetime(events_flat['valid_time'].values[time_idx])
         locations = list(sync_events[time_idx])
         lats = [grid_latitudes[loc] for loc in locations]
         lons = [grid_longitudes[loc] for loc in locations]
@@ -116,4 +124,4 @@ for time_idx in sorted(sync_events.keys()):
 
 # 儲存帶日期和經緯度的 transactions
 transactions_df = pd.DataFrame(transactions_with_coords, columns=['date', 'locations', 'latitudes', 'longitudes'])
-transactions_df.to_csv('./data/transactions_with_coords_5day(1964-1979).csv', index=False)
+transactions_df.to_csv('./data/transactions_with_coords_remove_trending(1964-1979).csv', index=False)

@@ -4,7 +4,7 @@ from scipy import stats
 import numpy as np
 
 # 1. 定義去除線性趨勢的函式（使用線性斜率法）
-def detrend_to_reference_year(da, dim='time', ref_year=2024):
+def detrend_to_reference_year(da, dim='time', ref_year=1965):
     """
     將 DataArray 沿指定時間維度做線性趨勢校正，使其與 ref_year 年氣候基準一致。
     使用 datetime64 時間作為 x 軸，忽略 NaN。
@@ -46,7 +46,7 @@ ds_daily = ds.resample(valid_time='1D').max()
 ds_daily = ds_daily.chunk({'valid_time': -1})  # 調整 chunk，讓 valid_time 為一個整體處理
 
 # 5. 對補值後的資料進行趨勢移除，取得無趨勢的氣溫資料
-t_aligned = detrend_to_reference_year(ds_daily['t'], dim='valid_time', ref_year=2024)
+t_aligned = detrend_to_reference_year(ds_daily['t'], dim='valid_time', ref_year=1965)
 
 # 6. 將去趨勢後的資料指定回一個新的 DataArray
 ds_detrended = ds_daily.copy()
@@ -85,5 +85,5 @@ df_compare = pd.DataFrame({
 df_compare.to_csv('./data/5deg/temp_timeseries_raw_vs_detrended.csv', index=False)
 
 # 11. 儲存結果
-#encoding = {'t': {'dtype': 'int8', 'zlib': True, 'complevel': 5}}
-#heatwave_events.to_netcdf('./data/5deg/heatwave_events_5deg_remove_trending(1965-2024).nc', encoding=encoding)
+encoding = {'t': {'dtype': 'int8', 'zlib': True, 'complevel': 5}}
+heatwave_events.to_netcdf('./data/5deg/heatwave_events_5deg_remove_trending(1965-2024).nc', encoding=encoding)
