@@ -53,7 +53,7 @@ ds_detrended = ds_daily.copy()
 ds_detrended['t'] = t_aligned
 
 # 7. 計算去趨勢後的 95 百分位數閾值（每個格點自己的極端高溫門檻）
-thresholds = ds_detrended['t'].quantile(0.95, dim='valid_time')
+thresholds = ds_daily['t'].quantile(0.95, dim='valid_time')
 
 # 8. 判斷每一天是否為熱浪（高於該點 95% 閾值），結果為 0/1 的布林陣列
 heatwave_events = (ds_detrended['t'] > thresholds).astype('int8')
